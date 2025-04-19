@@ -13,8 +13,11 @@ def get_tasks(request):
 
 @api_view(['POST'])
 def create_task(request):
+    print("POST received:", request.data)
     serializer = TodoSerializer(data=request.data)
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data)
+    print("Errors:", serializer.errors)
     return Response(serializer.errors)
+
