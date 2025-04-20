@@ -1,11 +1,14 @@
-# myapp/urls.py
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import TodoViewSet, signup
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from django.urls import path
-from . import views
+router = DefaultRouter()
+router.register(r'todos', TodoViewSet, basename='todo')
 
 urlpatterns = [
-    path('api/tasks/', views.get_tasks),  # List all tasks
-    path('api/tasks/create/', views.create_task),  # Create a new task
-    path('api/tasks/<int:pk>/', views.update_task),  # Update a task by ID
-    path('api/tasks/delete/<int:pk>/', views.delete_task),  # Delete a task by ID
+    path('signup/', signup, name='signup'),
+    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('', include(router.urls)),
 ]

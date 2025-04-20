@@ -1,50 +1,43 @@
-# myapp/views.py
-
+from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.decorators import action, api_view
+from django.contrib.auth.models import User
+from django.contrib.auth.hashers import make_password
 from .models import Todo
 from .serializers import TodoSerializer
-from rest_framework import status
 
-# Get all tasks
-@api_view(['GET'])
-def get_tasks(request):
-    tasks = Todo.objects.all()
-    serializer = TodoSerializer(tasks, many=True)
-    return Response(serializer.data)
-
-# Create a new task
+# ----------------------------
+# ✅ Signup View (Still standalone)
+# ----------------------------
 @api_view(['POST'])
-def create_task(request):
-    print("POST received:", request.data)
-    serializer = TodoSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    print("Errors:", serializer.errors)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+def signup(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
 
-# Update a task by ID
-@api_view(['PUT'])
-def update_task(request, pk):
-    try:
-        task = Todo.objects.get(pk=pk)
-    except Todo.DoesNotExist:
-        return Response({'error': 'Task not found'}, status=status.HTTP_404_NOT_FOUND)
+    if not username or not password:
+        return Response({'error': 'Username and password are required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    serializer = TodoSerializer(task, data=request.data, partial=True)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    if User.objects.filter(username=username).exists():
+        return Response({'error': 'Username already exists.'}, status=status.HTTP_400_BAD_REQUEST)
 
-# Delete a task by ID
-@api_view(['DELETE'])
-def delete_task(request, pk):
-    try:
-        task = Todo.objects.get(pk=pk)
-    except Todo.DoesNotExist:
-        return Response({'error': 'Task not found'}, status=status.HTTP_404_NOT_FOUND)
-    
-    task.delete()
-    return Response({'message': 'Task deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+    user = User.objects.create(
+        username=username,
+        password=make_password(password)
+    )
+    return Response({'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
+
+# ----------------------------
+# 🔄 TodoViewSet
+# ----------------------------
+# views.py
+
+class TodoViewSet(viewsets.ModelViewSet):
+    serializer_class = TodoSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Todo.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
